@@ -67,8 +67,17 @@ def run(capacity: int | None = None) -> dict:
     saved_trials, skipped_trials=prediction.held_heat_paths(archive.records,first_day=config["day"]-config["replay_days"],
                                                            final_day=config["day"],allowance=config["ridge"])
     prior_check=prediction.control_variance(saved_trials)
+    joint_required={grade:tuple(elements) for grade,elements in config["grade_bounds"].items()}
+    joint_calibration=prediction.cached_joint_calibration(
+        tuple(archive.records),config["day"],1,config["ridge"],
+        tuple((grade,elements) for grade,elements in joint_required.items()))
+    joint_by_grade={grade:[item for item in joint_calibration if item.grade==grade]
+                    for grade in config["grade_bounds"]}
     fit_records=[]
     tolerance_records=[]
+    forecast_context={}
+    bound_context={}
+    distance_context={}
     requirements=next(iter(config["grade_bounds"].values())).keys()
     missing=assays.coverage(measurements,requirements)
     for sample in measurements:
@@ -86,12 +95,22 @@ def run(capacity: int | None = None) -> dict:
         decision=limits.check_band(element_spec,errors,support_distance=config["distance_limit"])
         state=lab_stops.get((heat,element)) or ("关联成分化验不完整" if missing.get(heat) else decision["state"])
         lookup[heat,element]=dict(pre_pct=round(sample["pre_pct"],5), predicted=round(value,5), low=decision["low"],high=decision["high"])
+        forecast_context[heat,element]=value
+        bound_context[heat,element]=expected[grade,element]
+        distance_context[heat,element]=distance
         work.append(dict(heat=heat,element=element,grade=grade,state=state,deficit=decision["deficit"],space=decision["space"],
                          mass_kg=material["mass_kg"],priority=decision["risk"]))
         fit_records.append(dict(炉次=heat,元素=element,模型样本=fit.examples,终检估算=round(value,4),置信距离=round(distance,3),历史偏移=round(drift,4)))
         tolerance_records.append(dict(炉次=heat,支持样本=errors.support,**decision))
     formal=dosing.inspect(work)
-    verdict, used=dosing.correction_plan(formal.records,config["scale"],total_allowance)
+    verdict, used=dosing.whole_heat_plan(
+        formal.records,config["scale"],total_allowance,
+        samples_by_grade=joint_by_grade,
+        forecasts=forecast_context,bounds=bound_context,
+        distances=distance_context,
+        confidence=config.get("confidence",0.9),
+        minimum_support=config["required_support"],
+        support_distance=config["distance_limit"])
     planned={(row["heat"],row["element"]) for row in verdict}
     for sample in sorted({(line.heat,line.element) for line in input_assays.records if line.day <= config["day"] and line.arrived <= config["day"]} - planned):
         heat,element=sample
@@ -102,7 +121,12 @@ def run(capacity: int | None = None) -> dict:
     handover, unlinked=finishing.status_by_element(expected,verdict,final)
     readiness=finishing.handover_totals(handover)
     rows=[dict(line,**lookup.get((line["heat"],line["element"]),{})) for line in sorted(verdict,key=lambda row:(row["heat"],row["element"]))]
-    return {"metrics":{"可交割炉次":readiness["交割通过"],"复验预留单位":sum(used.values()),"待交割炉次":readiness["总炉次"]-readiness["交割通过"],"有效化验组":len(measurements)},
+    queued_heats=sorted({line["heat"] for line in verdict if line["reason"]=="整炉排队"})
+    readiness["整炉排队"]=len(queued_heats)
+    readiness["排队炉次"]=len(queued_heats)
+    readiness["排队炉次列表"]=queued_heats
+    return {"metrics":{"可交割炉次":readiness["交割通过"],"复验预留单位":sum(used.values()),"待交割炉次":readiness["总炉次"]-readiness["交割通过"],"有效化验组":len(measurements),"整炉排队":len(queued_heats)},
+            "queued_heats":queued_heats,"queue":queued_heats,
             "columns":{"heat":"炉次","grade":"牌号","element":"合金元素","pre_pct":"炉前测值（%）","predicted":"估计终检（%）","low":"区间下界","high":"区间上界","approved_units":"预留台架单位","reason":"处置"},
             "rows":rows,"series":[dict(label=line["heat"]+"/"+line["element"],value=line["predicted"]) for line in rows if "predicted" in line][:16],
             "stages":[workstep("化验记录",f"{len(measurements)} 组双化验可用，排除 {len(bad_lab)+len(input_assays.rejected)} 条",measurements+bad_lab+[record.evidence() for record in lab_reviews]),

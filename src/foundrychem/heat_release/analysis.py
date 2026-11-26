@@ -26,6 +26,8 @@ def verify_release(readings, authorizations, limits, visible_day):
             state="终检仍超差"
         elif row.actual_units+claimed[match] > item["approved_units"]:
             state="称重超出授权"
+        elif item.get("reason") == "整炉排队":
+            state="整炉排队"
         elif item["reason"] not in ("已批准复验","合格区间"):
             state="需质检员解除挂起"
         else:

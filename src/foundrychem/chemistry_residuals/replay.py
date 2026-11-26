@@ -3,7 +3,15 @@ from dataclasses import dataclass
 from math import fsum
 from statistics import median
 
-from .analysis import calibrate, eligible, features, residual
+from .analysis import (
+    calibrate,
+    eligible,
+    features,
+    residual,
+    paired_heat_residuals,
+    joint_calibration,
+    heat_identity,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -27,7 +35,7 @@ def held_heat_paths(archive, *, first_day, final_day, allowance):
     by_identifier=defaultdict(set)
     for sample in archive:
         if sample.closed and sample.heated < final_day and sample.published < final_day:
-            by_identifier[sample.archive].add(sample)
+            by_identifier[sample.archive,sample.element].add(sample)
     for rows in by_identifier.values():
         if len(rows)==1:
             selected=rows.pop()
@@ -71,3 +79,9 @@ def control_variance(samples):
         detail["误差改善比例"]=round((base-mae)/base,4) if base else None
         measures.append(detail)
     return measures
+
+
+joint_heat_paths=joint_calibration
+heat_residual_paths=joint_calibration
+complete_heat_paths=joint_calibration
+pair_heat_residuals=paired_heat_residuals

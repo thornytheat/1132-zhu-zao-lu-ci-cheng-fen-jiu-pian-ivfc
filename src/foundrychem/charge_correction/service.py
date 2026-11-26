@@ -3,7 +3,33 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from .contracts import CorrectionBatch, RecordError, Rejection
-from .analysis import bench_units, correction_plan
+from .analysis import (
+    bench_units,
+    correction_plan,
+    evaluate_heat_plan,
+    joint_hit_rate,
+    heat_hit_rate,
+    whole_heat_hit_rate,
+    minimum_heat_plan,
+    minimum_reservation,
+    whole_heat_reservation,
+    whole_heat_plan,
+    allocate_whole_heats,
+    joint_reservation_plan,
+    heat_reservation_plan,
+    plan_whole_heat,
+    reserve_whole_heat,
+    deterministic_correction_plan,
+    itemwise_correction_plan,
+    joint_correction_plan,
+    reservation_plan,
+    bench_reservation_plan,
+    whole_furnace_plan,
+    furnace_reservation_plan,
+    batch_whole_heat,
+    joint_heat_plan,
+    whole_heat_reservation_plan,
+)
 
 
 @dataclass(frozen=True, slots=True)

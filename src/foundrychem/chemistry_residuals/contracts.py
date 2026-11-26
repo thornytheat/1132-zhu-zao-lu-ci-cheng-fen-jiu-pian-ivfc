@@ -55,6 +55,7 @@ class HeatHistory:
     temp: float
     before: float
     after: float
+    heat: str | None = None
 
     @classmethod
     def parse(cls, document: Mapping) -> "HeatHistory":
@@ -71,6 +72,8 @@ class HeatHistory:
         temp = magnitude(document, 'temp', 500, 2000, whole=False)
         before = magnitude(document, 'before', 0, 100, whole=False)
         after = magnitude(document, 'after', 0, 100, whole=False)
+        heat_value = document.get('heat')
+        heat = label(document, 'heat', max_chars=34) if heat_value is not None else None
         return cls(
             archive=archive,
             grade=grade,
@@ -83,10 +86,11 @@ class HeatHistory:
             temp=temp,
             before=before,
             after=after,
+            heat=heat,
         )
 
     def evidence(self) -> dict:
-        return {
+        data={
             'archive': self.archive,
             'grade': self.grade,
             'element': self.element,
@@ -99,6 +103,9 @@ class HeatHistory:
             'before': self.before,
             'after': self.after,
         }
+        if self.heat is not None:
+            data['heat']=self.heat
+        return data
 
 
 @dataclass(frozen=True, slots=True)

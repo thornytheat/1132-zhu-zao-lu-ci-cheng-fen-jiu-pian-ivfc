@@ -3,7 +3,31 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 
 from .contracts import HeatHistory, RecordError, Rejection
-from .analysis import ResidualEstimator, features, eligible, robust_deviation, calibrate, residual
+from .analysis import (
+    ResidualEstimator,
+    features,
+    eligible,
+    robust_deviation,
+    calibrate,
+    residual,
+    heat_identity,
+    paired_heat_residuals,
+    joint_residual_vectors,
+    complete_heat_residuals,
+    rolling_heat_residuals,
+    JointHeatResidual,
+    JointCalibrationResult,
+    joint_calibration,
+    heat_calibration,
+    heat_residual_calibration,
+    calibration_heat_residuals,
+    cached_joint_calibration,
+    heat_residuals,
+    same_heat_residuals,
+    whole_heat_residuals,
+    same_grade_heat_residuals,
+    heat_joint_residuals,
+)
 
 
 @dataclass(frozen=True, slots=True)
